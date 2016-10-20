@@ -1,25 +1,18 @@
-# Example 12 - Graphical User Interfaces
+# Centrophone, Fall 2016
+# Duncan MacConnell
+#
+# Based on Example 12 - Graphical User Interfaces
 # Author: Steven Yi <stevenyi@gmail.com>
 # 2013.10.28
 #
-# This example demonstrates a slightly more advanced GUI example.
-# It uses a slider to allow setting the value of the frequency that
-# the notes initiated by the button will play at.
-#
-# Note: the actual use of update() here is not thread-safe.  In
-# real-world usage, we would need to drive Csound from a loop calling
-# PerformKsmps to ensure thread-safety.  For this example, the updating
-# generally works as there are few things demanding computation.
 
 from Tkinter import *
 import csnd6
 import os
 import numpy as np
 import librosa
+import random
 
-###############################
-
-# Our Orchestra for our project
 def_orc = """
 
 sr        =         44100
@@ -115,13 +108,13 @@ endin
 the_order = ["1.aif","2.aif","3.aif","4.aiff","5.wav","6.wav","7.aiff","8.aiff","9.wav","10.wav","11.wav","12.wav","12.wav"]
 orc = def_orc.format(*the_order)
 
-c = csnd6.Csound()          # create an instance of Csound
-c.SetOption("-odac")        # Set option for Csound
-c.SetOption("-+rtmidi=portmidi")  # Set option for Csound
+# create an instance of Csound, set options, compile orchestra, start csound
+c = csnd6.Csound()
+c.SetOption("-odac")
+c.SetOption("-+rtmidi=portmidi")
 c.SetOption("-Ma")
-c.CompileOrc(orc)           # Compile Orchestra from String
-c.Start()                   # When compiling from strings, this call is
-                            # necessary before doing any performing
+c.CompileOrc(orc)
+c.Start()
 perfThread = csnd6.CsoundPerformanceThread(c)
 perfThread.Play()
 
@@ -136,20 +129,26 @@ def start_csound(new_orc):
 
 def determine_centroid(directory):
     cent = []
+    filtered_files = []
+
+    # filter out config files
     files = os.listdir(directory)
-    # for each file
     for f in files:
-        # if its not a config file
         if not f.startswith('.'):
+            filtered_files.append(f)
+
+    # randomly pick 13 samples
+    filtered_files = random.sample(files, 13)
+    print "selected files:", filtered_files
+
+    for f in filtered_files:
             thisfile = os.getcwd() + "/audio/" + f
             # determine the spectral centroid
             y, sr = librosa.load(thisfile)
             cents = librosa.feature.spectral_centroid(y=y, sr=sr, S=None, n_fft=32768, hop_length=16384, freq=None)
             cent.append([f, np.sum(cents)])
-            # ndx = ndx+1
             print "Analyzing " + f + " ..." + str(np.sum(cents))
     return cent
-
 
 def format_orc(the_files):
 
@@ -177,7 +176,7 @@ class Centrophone(Frame):
 
         dc = determine_centroid("audio")
         fc = format_orc(dc)
-        print fc
+        # print fc          # to see generated orchestra
         self.pack()
         start_csound(fc)
 
@@ -198,5 +197,4 @@ class Centrophone(Frame):
 
 app = Centrophone(Tk())
 app.mainloop()
-
 
